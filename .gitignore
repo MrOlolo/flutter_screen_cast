@@ -21,6 +21,7 @@
 #.vscode/
 
 # Flutter/Dart/Pub related
+*.lock
 **/doc/api/
 .dart_tool/
 .flutter-plugins
@@ -39,9 +40,9 @@
 **/android/**/GeneratedPluginRegistrant.java
 **/android/key.properties
 **/android/app/*.jks
-**/android/app/src/debug/gen/
+**/android/app/src/debug/
 **/android/app/src/main/gen/
-**/android/app/src/profile/gen/
+**/android/app/src/profile/
 
 # iOS/XCode related
 **/ios/**/*.mode1v3
