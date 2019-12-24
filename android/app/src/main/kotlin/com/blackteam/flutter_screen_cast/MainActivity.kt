@@ -25,6 +25,7 @@ import android.view.View
 import android.widget.Button
 import android.widget.Toast
 import com.blackteam.flutter_screen_cast.tcp_client.TcpClient
+import com.blackteam.flutter_screen_cast.udp_client.DatagramSocketClient
 
 import io.flutter.app.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
@@ -58,6 +59,7 @@ class MainActivity : FlutterActivity() {
     private var mOrientationChangeCallback: OrientationChangeCallback? = null
 
     private var tcpSocketClient: TcpClient? = null
+    private var datagramSocketClient: DatagramSocketClient? = null
     private var remoteHost: InetAddress? = null
     private val remotePort: Int = 0
 
@@ -105,8 +107,9 @@ class MainActivity : FlutterActivity() {
                     // _result.success("started")
 //                    return
 //
+                    val ip: String? = call.argument<String>("ip")
                     try {
-                        if (!createSocket()) {
+                        if (!createSocket(ip!!)) {
                             Log.e(TAG, "Failed to connect tcp://$remoteHost:$remotePort")
                             if (!resultSended) {
                                 result.error("1", "Failed to connect tcp://$remoteHost:$remotePort", null)
@@ -349,16 +352,24 @@ class MainActivity : FlutterActivity() {
             }
             Log.e(TAG, "data " + data.size)
             tcpSocketClient?.send(data)
+        } else if(datagramSocketClient != null){
+            if (header != null) {
+                val headerAndBody = ByteArray(header.size + data.size)
+                System.arraycopy(header, 0, headerAndBody, 0, header.size)
+                System.arraycopy(data, 0, headerAndBody, header.size, data.size)
+                datagramSocketClient?.send(headerAndBody)
+            } else {
+                datagramSocketClient?.send(data)
+            }
         } else {
             Log.e(TAG, "tcp socket not available.")
             stopProjection()
         }
     }
 
-    private fun createSocket(): Boolean {
-        val kk = "192.168.1.186"
+    private fun createSocket(ip: String): Boolean {
         try {
-            this.remoteHost = InetAddress.getByName(kk)
+            this.remoteHost = InetAddress.getByName(ip)
         } catch (e: UnknownHostException) {
             Toast.makeText(this,
                     e.message, Toast.LENGTH_SHORT).show()
@@ -370,7 +381,25 @@ class MainActivity : FlutterActivity() {
         return true
     }
 
+    private fun createUdpSocket(ip: String): Boolean {
+        try {
+            this.remoteHost = InetAddress.getByName(ip)
+        } catch (e: UnknownHostException) {
+            Toast.makeText(this,
+                    e.message, Toast.LENGTH_SHORT).show()
+            e.printStackTrace()
+        }
+
+        datagramSocketClient = DatagramSocketClient(remoteHost!!, 49152)
+        datagramSocketClient?.start()
+        return true
+    }
+
     private fun closeSocket() {
+        if (datagramSocketClient != null) {
+            datagramSocketClient?.close()
+            datagramSocketClient = null
+        }
         if (tcpSocketClient != null) {
             try {
                 tcpSocketClient?.close()

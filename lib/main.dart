@@ -45,22 +45,12 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
   static const platform = const MethodChannel('ivt.black/stream_controller');
   bool isLoading = false;
   int currentDevice;
   bool streaming = false;
 
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
+  TextEditingController controller = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -96,25 +86,19 @@ class _MyHomePageState extends State<MyHomePage> {
           // horizontal).
           mainAxisAlignment: MainAxisAlignment.center,
           children: <Widget>[
-            Text(
-              'You have pushed the button this many times:',
-            ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.display1,
+            TextField(
+              controller: controller,
+              decoration: InputDecoration(hintText: '192.168.0.1'),
             ),
           ],
         ),
       ),
-      floatingActionButton:  FloatingActionButton(
+      floatingActionButton: FloatingActionButton(
         onPressed: startStream,
         tooltip: 'Start Stream',
-        backgroundColor: streaming
-            ? Colors.red
-            : Theme.of(context).accentColor,
-        child: Icon(streaming
-            ? Icons.pause_circle_filled
-            : Icons.play_circle_outline),
+        backgroundColor: streaming ? Colors.red : Theme.of(context).accentColor,
+        child: Icon(
+            streaming ? Icons.pause_circle_filled : Icons.play_circle_outline),
       ), // This trailing comma makes auto-formatting nicer for build methods.
     );
   }
@@ -126,7 +110,9 @@ class _MyHomePageState extends State<MyHomePage> {
     if (!streaming) {
       try {
         print('START RECORDING');
-        final String result = await platform.invokeMethod('start', {'g': 'g'});
+        var ip =
+            controller.text.trim().isNotEmpty ? controller.text.trim() : '10.0.0.1';
+        final String result = await platform.invokeMethod('start', {'ip': ip});
         print('RESULT:' + result);
         setState(() {
           streaming = !streaming;
