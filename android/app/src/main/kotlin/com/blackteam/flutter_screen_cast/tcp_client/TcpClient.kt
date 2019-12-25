@@ -44,7 +44,7 @@ class TcpClient(val remoteHost: InetAddress, val remotePort: Int) : Thread() {
             outputStream = socket?.getOutputStream()
             bufferedOutputStream = BufferedOutputStream(outputStream)
         } catch (e: IOException) {
-            Log.e(TAG, "Socket creation failed - $e")
+           // Log.e(TAG, "Socket creation failed - $e")
             socket = null
             outputStream = null
             bufferedOutputStream = null
@@ -72,15 +72,15 @@ class TcpClient(val remoteHost: InetAddress, val remotePort: Int) : Thread() {
     }
 
     fun send(data: ByteArray) {
-        Log.e(TAG, "send data")
+       // Log.e(TAG, "send data")
         if (handler == null || socket == null || outputStream == null) {
             return
         }
         val message = handler!!.obtainMessage()
         message.obj = data
 
-        Log.e(TAG, "send data 2")
-        Log.e(TAG, "size: " + data.size)
+       // Log.e(TAG, "send data 2")
+       // Log.e(TAG, "size: " + data.size)
         handler!!.sendMessage(message)
     }
 

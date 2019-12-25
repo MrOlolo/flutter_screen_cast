@@ -31,6 +31,7 @@ import io.flutter.plugins.GeneratedPluginRegistrant
 import java.io.ByteArrayOutputStream
 import java.net.InetAddress
 import java.net.UnknownHostException
+import kotlin.math.roundToInt
 
 @TargetApi(Build.VERSION_CODES.LOLLIPOP)
 class MainActivity : FlutterActivity() {
@@ -49,10 +50,11 @@ class MainActivity : FlutterActivity() {
     private var mDisplay: Display? = null
     private var mVirtualDisplay: VirtualDisplay? = null
     private var mDensity: Int = 0
-    private var mWidth: Int = 0
-    private var mHeight: Int = 0
-    private var mRotation: Int = 0
-    private var mOrientationChangeCallback: OrientationChangeCallback? = null
+    private var mWidth: Int = 1280
+    private var mHeight: Int = 720
+    private val ratio: Float = 16f / 9f
+    //  private var mRotation: Int = 0
+    // private var mOrientationChangeCallback: OrientationChangeCallback? = null
 
     private var tcpSocketClient: TcpClient? = null
     private var datagramSocketClient: DatagramSocketClient? = null
@@ -84,15 +86,20 @@ class MainActivity : FlutterActivity() {
                     resultSended = false
                     _result = result
                     val ip: String? = call.argument<String>("ip")
+                    val height: Int? = call.argument<Int>("res")
+                    if (height != null) {
+                        mHeight = height
+                        //Log.i(TAG,"height $height")
+                    }
                     try {
                         if (!createSocket(ip!!)) {
-                            Log.e(TAG, "Failed to connect tcp://$remoteHost:$remotePort")
+                            //Log.e(TAG, "Failed to connect tcp://$remoteHost:$remotePort")
                             if (!resultSended) {
                                 result.error("1", "Failed to connect tcp://$remoteHost:$remotePort", null)
                                 resultSended = true
                             }
                         } else {
-                            Log.i(TAG, "TCP Socket created.")
+                            //Log.i(TAG, "TCP Socket created.")
                             startProjection()
                         }
                     } catch (t: Throwable) {
@@ -118,30 +125,30 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private inner class OrientationChangeCallback internal constructor(context: Context) : OrientationEventListener(context) {
-
-        @TargetApi(Build.VERSION_CODES.KITKAT)
-        override fun onOrientationChanged(orientation: Int) {
-            Log.e(TAG, "change orientation")
-            try {
-                val rotation = mDisplay!!.rotation
-                if (rotation != mRotation) {
-                    mRotation = rotation
-                    if (mVirtualDisplay != null) {
-                        mVirtualDisplay?.release()
-                    }
-                    if (mImageReader != null) {
-                        mImageReader?.setOnImageAvailableListener(null, null)
-                    }
-
-                    createVirtualDisplay()
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-
-        }
-    }
+//    private inner class OrientationChangeCallback internal constructor(context: Context) : OrientationEventListener(context) {
+//
+//        @TargetApi(Build.VERSION_CODES.KITKAT)
+//        override fun onOrientationChanged(orientation: Int) {
+//            //Log.e(TAG, "change orientation")
+//            try {
+//                val rotation = mDisplay!!.rotation
+//                if (rotation != mRotation) {
+//                    mRotation = rotation
+//                    if (mVirtualDisplay != null) {
+//                        mVirtualDisplay?.release()
+//                    }
+//                    if (mImageReader != null) {
+//                        mImageReader?.setOnImageAvailableListener(null, null)
+//                    }
+//
+//                    createVirtualDisplay()
+//                }
+//            } catch (e: Exception) {
+//                e.printStackTrace()
+//            }
+//
+//        }
+//    }
 
     private inner class ImageAvailableListener : ImageReader.OnImageAvailableListener {
         private var lastImageMillis: Long = 0
@@ -157,7 +164,7 @@ class MainActivity : FlutterActivity() {
                 if (image != null) {
                     val now = System.currentTimeMillis()
                     if (now - lastImageMillis < 1000 / FPS) {
-                        Log.e(TAG, "skip image")
+                        //Log.e(TAG, "skip image")
                         image.close()
                         return
                     }
@@ -176,7 +183,7 @@ class MainActivity : FlutterActivity() {
 
                     os.close()
                     IMAGES_PRODUCED++
-                    Log.e(TAG, "captured image: $IMAGES_PRODUCED")
+                    //Log.e(TAG, "captured image: $IMAGES_PRODUCED")
                 }
 
             } catch (e: Exception) {
@@ -232,11 +239,11 @@ class MainActivity : FlutterActivity() {
 
     private inner class MediaProjectionStopCallback : MediaProjection.Callback() {
         override fun onStop() {
-            Log.e("ScreenCapture", "stopping projection.")
+            //Log.e("ScreenCapture", "stopping projection.")
             mHandler!!.post {
                 if (mVirtualDisplay != null) mVirtualDisplay?.release()
                 if (mImageReader != null) mImageReader?.setOnImageAvailableListener(null, null)
-                if (mOrientationChangeCallback != null) mOrientationChangeCallback?.disable()
+                //if (mOrientationChangeCallback != null) mOrientationChangeCallback?.disable()
                 sMediaProjection?.unregisterCallback(this@MediaProjectionStopCallback)
             }
         }
@@ -245,7 +252,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         if (requestCode != REQUEST_CODE) {
-            Log.e(TAG, "Unknown request code: $requestCode")
+            //Log.e(TAG, "Unknown request code: $requestCode")
             if (!resultSended) {
                 _result.error("0", "STRANGE CASE", null)
                 resultSended = true
@@ -274,10 +281,10 @@ class MainActivity : FlutterActivity() {
                 createVirtualDisplay()
 
                 // register orientation change callback
-                mOrientationChangeCallback = OrientationChangeCallback(this)
-                if (mOrientationChangeCallback!!.canDetectOrientation()) {
-                    mOrientationChangeCallback?.enable()
-                }
+//                mOrientationChangeCallback = OrientationChangeCallback(this)
+//                if (mOrientationChangeCallback!!.canDetectOrientation()) {
+//                    mOrientationChangeCallback?.enable()
+//                }
 
                 // register media projection stop callback
                 sMediaProjection?.registerCallback(MediaProjectionStopCallback(), mHandler)
@@ -305,18 +312,19 @@ class MainActivity : FlutterActivity() {
     /****************************************** Factoring Virtual Display creation  */
     private fun createVirtualDisplay() {
         // get width and height
-        val size = Point()
-        val rotation = mDisplay?.rotation
-        mDisplay?.getSize(size)
-        if (rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180) {
-            mWidth = if (size.x > size.y) size.y else size.x
-            mHeight = if (size.x > size.y) size.x else size.y
-        } else {
-            mWidth = if (size.x > size.y) size.x else size.y
-            mHeight = if (size.x > size.y) size.y else size.x
-        }
+//        val size = Point()
+//        val rotation = mDisplay?.rotation
+//        mDisplay?.getSize(size)
+//        if (rotation == Surface.ROTATION_0 || rotation == Surface.ROTATION_180) {
+//            mWidth = if (size.x > size.y) size.y else size.x
+//            mHeight = if (size.x > size.y) size.x else size.y
+//        } else {
+//            mWidth = if (size.x > size.y) size.x else size.y
+//            mHeight = if (size.x > size.y) size.y else size.x
+//        }
 
         // start capture reader
+        mWidth = (mHeight*ratio).roundToInt()
         mImageReader = ImageReader.newInstance(mWidth, mHeight, PixelFormat.RGBA_8888, 5)
         mVirtualDisplay = sMediaProjection?.createVirtualDisplay(MEDIA_PROJ_NAME, mWidth, mHeight, mDensity, VIRTUAL_DISPLAY_FLAGS, mImageReader!!.surface, null, mHandler)
         mImageReader?.setOnImageAvailableListener(ImageAvailableListener(), mHandler)
@@ -327,9 +335,9 @@ class MainActivity : FlutterActivity() {
             if (header != null) {
                 tcpSocketClient?.send(header)
             }
-            Log.e(TAG, "data " + data.size)
+            //Log.e(TAG, "data " + data.size)
             tcpSocketClient?.send(data)
-        } else if(datagramSocketClient != null){
+        } else if (datagramSocketClient != null) {
             if (header != null) {
                 val headerAndBody = ByteArray(header.size + data.size)
                 System.arraycopy(header, 0, headerAndBody, 0, header.size)
@@ -339,7 +347,7 @@ class MainActivity : FlutterActivity() {
                 datagramSocketClient?.send(data)
             }
         } else {
-            Log.e(TAG, "tcp socket not available.")
+            //Log.e(TAG, "tcp socket not available.")
             stopProjection()
         }
     }

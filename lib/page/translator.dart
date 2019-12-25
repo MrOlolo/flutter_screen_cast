@@ -82,8 +82,8 @@ class TranslatorTabState extends State<TranslatorTab> {
         print('START RECORDING');
         var ip = await StorageService.getIp() ?? defaultIp;
         var resolution = await StorageService.getResolution() ?? '720';
-        final String result =
-            await platform.invokeMethod('start', {'ip': ip, 'res': resolution});
+        final String result = await platform.invokeMethod(
+            'start', {'ip': ip, 'res': int.tryParse(resolution) ?? 720});
         print('RESULT:' + result);
 
         setState(() {
