@@ -21,8 +21,6 @@ import android.util.Log
 import android.view.Display
 import android.view.OrientationEventListener
 import android.view.Surface
-import android.view.View
-import android.widget.Button
 import android.widget.Toast
 import com.blackteam.flutter_screen_cast.tcp_client.TcpClient
 import com.blackteam.flutter_screen_cast.udp_client.DatagramSocketClient
@@ -31,7 +29,6 @@ import io.flutter.app.FlutterActivity
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugins.GeneratedPluginRegistrant
 import java.io.ByteArrayOutputStream
-import java.io.IOException
 import java.net.InetAddress
 import java.net.UnknownHostException
 
@@ -40,10 +37,9 @@ class MainActivity : FlutterActivity() {
     private val streamController = "ivt.black/stream_controller"
     private val TAG = MainActivity::class.java.name
     private val REQUEST_CODE = 100
-    private val FPS = 24
-    private val STORE_DIRECTORY: String? = null
+    private val FPS = 25
     private var IMAGES_PRODUCED: Int = 0
-    private val SCREENCAP_NAME = "screencap"
+    private val MEDIA_PROJ_NAME = "video_stream"
     private val VIRTUAL_DISPLAY_FLAGS = DisplayManager.VIRTUAL_DISPLAY_FLAG_OWN_CONTENT_ONLY or DisplayManager.VIRTUAL_DISPLAY_FLAG_PUBLIC
     private var sMediaProjection: MediaProjection? = null
 
@@ -61,7 +57,7 @@ class MainActivity : FlutterActivity() {
     private var tcpSocketClient: TcpClient? = null
     private var datagramSocketClient: DatagramSocketClient? = null
     private var remoteHost: InetAddress? = null
-    private val remotePort: Int = 0
+    private val remotePort: Int = 49152
 
     private lateinit var _result: MethodChannel.Result
     private var resultSended = true
@@ -71,22 +67,6 @@ class MainActivity : FlutterActivity() {
         GeneratedPluginRegistrant.registerWith(this)
 
         mProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
-
-        // start projection
-//        startButton.setOnClickListener {
-//            startProjection()
-//            if (!createSocket()) {
-//                Log.e(TAG, "Failed to connect tcp://$remoteHost:$remotePort")
-//            }
-//            Log.i(TAG, "TCP Socket created.")
-//        }
-
-        // stop projection
-//        stopButton.setOnClickListener {
-//            stopProjection()
-//            closeSocket()
-//        }
-
         // start capture handling thread
         object : Thread() {
             override fun run() {
@@ -103,10 +83,6 @@ class MainActivity : FlutterActivity() {
                 -> {
                     resultSended = false
                     _result = result
-                    // thread().start()
-                    // _result.success("started")
-//                    return
-//
                     val ip: String? = call.argument<String>("ip")
                     try {
                         if (!createSocket(ip!!)) {
@@ -130,8 +106,9 @@ class MainActivity : FlutterActivity() {
                     resultSended = false
                     _result = result
 
-                    stopProjection()
                     closeSocket()
+                    stopProjection()
+
                     if (!resultSended) {
                         result.success("stopped")
                         resultSended = true
@@ -341,7 +318,7 @@ class MainActivity : FlutterActivity() {
 
         // start capture reader
         mImageReader = ImageReader.newInstance(mWidth, mHeight, PixelFormat.RGBA_8888, 5)
-        mVirtualDisplay = sMediaProjection?.createVirtualDisplay(SCREENCAP_NAME, mWidth, mHeight, mDensity, VIRTUAL_DISPLAY_FLAGS, mImageReader!!.surface, null, mHandler)
+        mVirtualDisplay = sMediaProjection?.createVirtualDisplay(MEDIA_PROJ_NAME, mWidth, mHeight, mDensity, VIRTUAL_DISPLAY_FLAGS, mImageReader!!.surface, null, mHandler)
         mImageReader?.setOnImageAvailableListener(ImageAvailableListener(), mHandler)
     }
 
@@ -376,7 +353,7 @@ class MainActivity : FlutterActivity() {
             e.printStackTrace()
         }
 
-        tcpSocketClient = TcpClient(remoteHost!!, 49152)
+        tcpSocketClient = TcpClient(remoteHost!!, remotePort)
         tcpSocketClient?.start()
         return true
     }
@@ -390,7 +367,7 @@ class MainActivity : FlutterActivity() {
             e.printStackTrace()
         }
 
-        datagramSocketClient = DatagramSocketClient(remoteHost!!, 49152)
+        datagramSocketClient = DatagramSocketClient(remoteHost!!, remotePort)
         datagramSocketClient?.start()
         return true
     }
